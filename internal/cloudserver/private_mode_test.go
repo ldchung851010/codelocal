@@ -60,7 +60,7 @@ func TestPrivateModeConfigLoadsSingleOwner(t *testing.T) {
 	}
 }
 
-func TestPrivateModeSignupGuardBlocksSignupButAllowsLogin(t *testing.T) {
+func TestPrivateModeSignupGuardBlocksSignupAndInviteButAllowsLogin(t *testing.T) {
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -68,7 +68,7 @@ func TestPrivateModeSignupGuardBlocksSignupButAllowsLogin(t *testing.T) {
 	})
 	handler := privateModeSignupGuard(next)
 
-	for _, path := range []string{"/signup", "/signup/verify", "/api/v1/auth/signup-verification"} {
+	for _, path := range []string{"/signup", "/signup/verify", "/api/v1/auth/signup-verification", "/api/v1/invite"} {
 		called = false
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, nil))

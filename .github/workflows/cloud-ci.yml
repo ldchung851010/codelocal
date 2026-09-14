@@ -63,6 +63,8 @@ on:
       - 'internal/taskstate/**'
       - 'internal/usage/**'
       - 'internal/version/**'
+      - 'internal/webauth/**'
+      - 'internal/webutil/**'
       - 'assets/**'
       - 'go.mod'
       - 'go.sum'

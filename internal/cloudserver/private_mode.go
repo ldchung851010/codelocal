@@ -62,8 +62,8 @@ func ensurePrivateOwnerAdmin(email string) error {
 	return nil
 }
 
-// PreparePrivateModeEnvironment must run before New so components that snapshot
-// the admin list during construction see the private owner as an administrator.
+// PreparePrivateModeEnvironment runs before New so any constructor-time admin
+// checks see the intended private owner rather than the public deployment default.
 func PreparePrivateModeEnvironment() error {
 	cfg, err := privateModeConfigFromEnv()
 	if err != nil {

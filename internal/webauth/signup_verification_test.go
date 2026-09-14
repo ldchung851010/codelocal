@@ -1,6 +1,8 @@
 package webauth
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"testing"
 )
@@ -31,5 +33,18 @@ func TestSignupCodeHashBindsTokenAndCode(t *testing.T) {
 func TestMaskEmail(t *testing.T) {
 	if got := maskEmail("someone@example.com"); got != "s******@example.com" {
 		t.Fatalf("maskEmail()=%q", got)
+	}
+}
+
+func TestSignupDisabledRejectsSignupStart(t *testing.T) {
+	manager := New(nil, "http://localhost")
+	manager.SetSignupEnabled(false)
+
+	req := httptest.NewRequest(http.MethodPost, "/signup", nil)
+	recorder := httptest.NewRecorder()
+	manager.signupStart(recorder, req)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("status=%d, want %d", recorder.Code, http.StatusNotFound)
 	}
 }

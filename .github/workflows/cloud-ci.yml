@@ -2,7 +2,7 @@ name: CodeLocal Cloud CI
 
 on:
   push:
-    branches: [main, dev, go-migration]
+    branches: [main, dev, go-migration, feature/private-owner-bootstrap]
     paths:
       - 'cmd/codelocal-cloud/**'
       - 'internal/clientupdate/**'
@@ -63,8 +63,6 @@ on:
       - 'internal/taskstate/**'
       - 'internal/usage/**'
       - 'internal/version/**'
-      - 'internal/webauth/**'
-      - 'internal/webutil/**'
       - 'assets/**'
       - 'go.mod'
       - 'go.sum'

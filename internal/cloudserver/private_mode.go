@@ -92,15 +92,27 @@ func ConfigurePrivateMode(ctx context.Context, server *Server) error {
 	return nil
 }
 
+func privateModeBlockedPath(path string) bool {
+	for _, prefix := range []string{
+		"/signup",
+		"/invite",
+		"/api/v1/auth/signup-verification",
+		"/api/v1/invite",
+	} {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func privateModeSignupGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/signup", "/signup/verify", "/api/v1/auth/signup-verification", "/api/v1/invite":
+		if privateModeBlockedPath(r.URL.Path) {
 			w.Header().Set("Cache-Control", "no-store")
 			http.NotFound(w, r)
 			return
-		default:
-			next.ServeHTTP(w, r)
 		}
+		next.ServeHTTP(w, r)
 	})
 }

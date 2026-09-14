@@ -44,6 +44,13 @@ func main() {
 	// Keep old per-thread ChatGPT MCP schemas functional after the compact tool
 	// migration without re-exposing the legacy granular tools in tools/list.
 	server.HTTP.Handler = mcpgateway.LegacyToolCallCompatibility(server.HTTP.Handler)
+	if err := cloudserver.ConfigurePrivateMode(ctx, server); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		_ = server.Shutdown(shutdownCtx)
+		cancel()
+		slog.Error("CodeLocal private mode initialization failed", "error", err)
+		os.Exit(1)
+	}
 	errCh := make(chan error, 1)
 	go func() { errCh <- server.ListenAndServe() }()
 	select {

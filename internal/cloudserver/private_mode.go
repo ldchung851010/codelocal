@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/0xmarkhydra/codelocal/internal/cloud"
 	"github.com/0xmarkhydra/codelocal/internal/webauth"
 )
 
@@ -49,6 +50,18 @@ func privateModeConfigFromEnv() (privateModeConfig, error) {
 	return privateModeConfig{Enabled: true, OwnerEmail: email, OwnerPassword: password}, nil
 }
 
+func ensurePrivateOwnerAdmin(email string) error {
+	if strings.TrimSpace(os.Getenv("CODELOCAL_ADMIN_EMAILS")) == "" && strings.TrimSpace(os.Getenv("CODELOCAL_ADMIN_EMAIL")) == "" {
+		if err := os.Setenv("CODELOCAL_ADMIN_EMAIL", email); err != nil {
+			return fmt.Errorf("configure private owner admin: %w", err)
+		}
+	}
+	if !cloud.IsAdminEmail(email) {
+		return errors.New("private owner must be included in CODELOCAL_ADMIN_EMAILS or CODELOCAL_ADMIN_EMAIL")
+	}
+	return nil
+}
+
 // ConfigurePrivateMode bootstraps the single private owner and closes the
 // public signup/invite surface. Login, browser sessions, OAuth, and device
 // pairing continue through their existing handlers unchanged.
@@ -62,6 +75,9 @@ func ConfigurePrivateMode(ctx context.Context, server *Server) error {
 	}
 	if server == nil || server.Store == nil || server.HTTP == nil || server.HTTP.Handler == nil {
 		return errors.New("private mode requires an initialized cloud server")
+	}
+	if err := ensurePrivateOwnerAdmin(cfg.OwnerEmail); err != nil {
+		return err
 	}
 
 	hash, salt, err := webauth.HashPassword(cfg.OwnerPassword)

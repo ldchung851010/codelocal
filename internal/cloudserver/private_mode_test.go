@@ -41,6 +41,16 @@ func TestPrivateModeConfigRequiresOwnerCredentials(t *testing.T) {
 	}
 }
 
+func TestPrivateModeConfigRejectsInvalidOwnerEmail(t *testing.T) {
+	t.Setenv("CODELOCAL_PRIVATE_MODE", "1")
+	t.Setenv("CODELOCAL_OWNER_EMAIL", "not-an-email")
+	t.Setenv("CODELOCAL_OWNER_PASSWORD", "a-strong-private-password")
+
+	if _, err := privateModeConfigFromEnv(); err == nil {
+		t.Fatal("expected invalid owner email to fail closed")
+	}
+}
+
 func TestPrivateModeConfigLoadsSingleOwner(t *testing.T) {
 	t.Setenv("CODELOCAL_PRIVATE_MODE", "true")
 	t.Setenv("CODELOCAL_OWNER_EMAIL", " Owner@Example.com ")
@@ -82,7 +92,7 @@ func TestEnsurePrivateOwnerAdminRejectsExplicitMismatch(t *testing.T) {
 	}
 }
 
-func TestPrivateModeSignupGuardBlocksSignupAndInviteButAllowsLogin(t *testing.T) {
+func TestPrivateModeSignupGuardBlocksSignupAndInviteSurfaces(t *testing.T) {
 	called := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -90,7 +100,18 @@ func TestPrivateModeSignupGuardBlocksSignupAndInviteButAllowsLogin(t *testing.T)
 	})
 	handler := privateModeSignupGuard(next)
 
-	for _, path := range []string{"/signup", "/signup/verify", "/api/v1/auth/signup-verification", "/api/v1/invite"} {
+	blocked := []string{
+		"/signup",
+		"/signup/",
+		"/signup/verify",
+		"/signup/verify/anything",
+		"/invite",
+		"/invite/foo",
+		"/api/v1/auth/signup-verification",
+		"/api/v1/invite",
+		"/api/v1/invite/foo",
+	}
+	for _, path := range blocked {
 		called = false
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, nil))
@@ -100,15 +121,30 @@ func TestPrivateModeSignupGuardBlocksSignupAndInviteButAllowsLogin(t *testing.T)
 		if called {
 			t.Fatalf("%s reached the wrapped handler", path)
 		}
+		if recorder.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("%s must disable caching", path)
+		}
 	}
+}
 
-	called = false
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/login", nil))
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("login status=%d, want %d", recorder.Code, http.StatusNoContent)
-	}
-	if !called {
-		t.Fatal("login should reach the wrapped handler")
+func TestPrivateModeSignupGuardAllowsLoginPairingAndNearMisses(t *testing.T) {
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := privateModeSignupGuard(next)
+
+	allowed := []string{"/login", "/pair/start", "/signup-help", "/invitee", "/api/v1/invited"}
+	for _, path := range allowed {
+		called = false
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, nil))
+		if recorder.Code != http.StatusNoContent {
+			t.Fatalf("%s status=%d, want %d", path, recorder.Code, http.StatusNoContent)
+		}
+		if !called {
+			t.Fatalf("%s should reach the wrapped handler", path)
+		}
 	}
 }

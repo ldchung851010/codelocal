@@ -1,6 +1,10 @@
 package cloudserver
 
-import "testing"
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
 func TestPrivateModeConfigDisabledByDefault(t *testing.T) {
 	t.Setenv("CODELOCAL_PRIVATE_MODE", "")
@@ -13,6 +17,16 @@ func TestPrivateModeConfigDisabledByDefault(t *testing.T) {
 	}
 	if cfg.Enabled {
 		t.Fatal("private mode must be disabled by default")
+	}
+}
+
+func TestPrivateModeConfigRejectsUnknownMode(t *testing.T) {
+	t.Setenv("CODELOCAL_PRIVATE_MODE", "maybe")
+	t.Setenv("CODELOCAL_OWNER_EMAIL", "owner@example.com")
+	t.Setenv("CODELOCAL_OWNER_PASSWORD", "a-strong-private-password")
+
+	if _, err := privateModeConfigFromEnv(); err == nil {
+		t.Fatal("expected unknown private mode value to fail closed")
 	}
 }
 
@@ -43,5 +57,36 @@ func TestPrivateModeConfigLoadsSingleOwner(t *testing.T) {
 	}
 	if cfg.OwnerPassword != "a-strong-private-password" {
 		t.Fatal("owner password was not loaded")
+	}
+}
+
+func TestPrivateModeSignupGuardBlocksSignupButAllowsLogin(t *testing.T) {
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := privateModeSignupGuard(next)
+
+	for _, path := range []string{"/signup", "/signup/verify", "/api/v1/auth/signup-verification"} {
+		called = false
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, path, nil))
+		if recorder.Code != http.StatusNotFound {
+			t.Fatalf("%s status=%d, want %d", path, recorder.Code, http.StatusNotFound)
+		}
+		if called {
+			t.Fatalf("%s reached the wrapped handler", path)
+		}
+	}
+
+	called = false
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/login", nil))
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("login status=%d, want %d", recorder.Code, http.StatusNoContent)
+	}
+	if !called {
+		t.Fatal("login should reach the wrapped handler")
 	}
 }

@@ -15,16 +15,19 @@ CODELOCAL_OWNER_PASSWORD=<strong-password>
 
 `CODELOCAL_OWNER_PASSWORD` must satisfy the normal CodeLocal password policy (currently at least 10 characters). Never commit a real owner password to the repository.
 
+When neither `CODELOCAL_ADMIN_EMAILS` nor `CODELOCAL_ADMIN_EMAIL` is explicitly configured, private mode automatically treats `CODELOCAL_OWNER_EMAIL` as the admin account. If an admin variable is explicitly configured, it must include the private owner or startup fails closed.
+
 ## Startup behavior
 
 When private mode is enabled, startup is fail-closed:
 
 1. The server validates the private-mode variables.
-2. It hashes the configured owner password with the existing CodeLocal password hashing implementation.
-3. If the owner email does not exist yet, it creates that owner without requiring a referral code.
-4. If the owner already exists, the existing account and password are left unchanged.
-5. Public signup, signup verification, and invite endpoints return `404`.
-6. Existing login/session behavior and `/pair/start` -> `/pair/approve` -> `/pair/claim` remain unchanged.
+2. The configured owner becomes the default admin unless an explicit compatible admin configuration already exists.
+3. It hashes the configured owner password with the existing CodeLocal password hashing implementation.
+4. If the owner email does not exist yet, it creates that owner without requiring a referral code.
+5. If the owner already exists, the existing account and password are left unchanged.
+6. Public signup, signup verification, and invite endpoints return `404`.
+7. Existing login/session behavior and `/pair/start` -> `/pair/approve` -> `/pair/claim` remain unchanged.
 
 If private mode is disabled or unset, CodeLocal keeps its existing public behavior unchanged.
 

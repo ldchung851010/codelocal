@@ -26,7 +26,7 @@ When private mode is enabled, startup is fail-closed:
 3. It hashes the configured owner password with the existing CodeLocal password hashing implementation.
 4. If the owner email does not exist yet, it creates that owner without requiring a referral code.
 5. If the owner already exists, the existing account and password are left unchanged.
-6. Public signup, signup verification, and invite endpoints return `404`.
+6. Public signup and invite route trees return `404`, including `/signup/*`, `/invite/*`, `/api/v1/auth/signup-verification`, and `/api/v1/invite/*`.
 7. Existing login/session behavior and `/pair/start` -> `/pair/approve` -> `/pair/claim` remain unchanged.
 
 If private mode is disabled or unset, CodeLocal keeps its existing public behavior unchanged.

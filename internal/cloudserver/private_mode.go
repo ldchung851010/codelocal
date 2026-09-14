@@ -62,6 +62,19 @@ func ensurePrivateOwnerAdmin(email string) error {
 	return nil
 }
 
+// PreparePrivateModeEnvironment must run before New so components that snapshot
+// the admin list during construction see the private owner as an administrator.
+func PreparePrivateModeEnvironment() error {
+	cfg, err := privateModeConfigFromEnv()
+	if err != nil {
+		return err
+	}
+	if !cfg.Enabled {
+		return nil
+	}
+	return ensurePrivateOwnerAdmin(cfg.OwnerEmail)
+}
+
 // ConfigurePrivateMode bootstraps the single private owner and closes the
 // public signup/invite surface. Login, browser sessions, OAuth, and device
 // pairing continue through their existing handlers unchanged.
@@ -76,6 +89,8 @@ func ConfigurePrivateMode(ctx context.Context, server *Server) error {
 	if server == nil || server.Store == nil || server.HTTP == nil || server.HTTP.Handler == nil {
 		return errors.New("private mode requires an initialized cloud server")
 	}
+	// Keep this check here as a fail-closed defense for callers that invoke
+	// ConfigurePrivateMode directly instead of using the normal main startup path.
 	if err := ensurePrivateOwnerAdmin(cfg.OwnerEmail); err != nil {
 		return err
 	}

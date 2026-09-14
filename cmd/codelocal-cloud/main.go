@@ -34,8 +34,8 @@ func main() {
 		slog.Info("CodeLocal migration completed")
 		return
 	}
-	// Private-mode admin configuration must be prepared before New because the
-	// web-auth manager snapshots the admin list during server construction.
+	// Prepare private-mode admin configuration before constructing any server
+	// components so constructor-time admin checks see the intended owner.
 	if err := cloudserver.PreparePrivateModeEnvironment(); err != nil {
 		slog.Error("CodeLocal private mode configuration failed", "error", err)
 		os.Exit(1)

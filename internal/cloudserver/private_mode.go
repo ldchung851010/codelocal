@@ -50,8 +50,8 @@ func privateModeConfigFromEnv() (privateModeConfig, error) {
 }
 
 // ConfigurePrivateMode bootstraps the single private owner and closes the
-// public signup surface. Login, browser sessions, OAuth, and device pairing
-// continue through their existing handlers unchanged.
+// public signup/invite surface. Login, browser sessions, OAuth, and device
+// pairing continue through their existing handlers unchanged.
 func ConfigurePrivateMode(ctx context.Context, server *Server) error {
 	cfg, err := privateModeConfigFromEnv()
 	if err != nil {
@@ -79,7 +79,7 @@ func ConfigurePrivateMode(ctx context.Context, server *Server) error {
 func privateModeSignupGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/signup", "/signup/verify", "/api/v1/auth/signup-verification":
+		case "/signup", "/signup/verify", "/api/v1/auth/signup-verification", "/api/v1/invite":
 			w.Header().Set("Cache-Control", "no-store")
 			http.NotFound(w, r)
 			return

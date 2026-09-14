@@ -3,6 +3,7 @@ package cloudserver
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -57,6 +58,27 @@ func TestPrivateModeConfigLoadsSingleOwner(t *testing.T) {
 	}
 	if cfg.OwnerPassword != "a-strong-private-password" {
 		t.Fatal("owner password was not loaded")
+	}
+}
+
+func TestEnsurePrivateOwnerAdminDefaultsToOwner(t *testing.T) {
+	t.Setenv("CODELOCAL_ADMIN_EMAILS", "")
+	t.Setenv("CODELOCAL_ADMIN_EMAIL", "")
+
+	if err := ensurePrivateOwnerAdmin("owner@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if got := os.Getenv("CODELOCAL_ADMIN_EMAIL"); got != "owner@example.com" {
+		t.Fatalf("CODELOCAL_ADMIN_EMAIL=%q, want %q", got, "owner@example.com")
+	}
+}
+
+func TestEnsurePrivateOwnerAdminRejectsExplicitMismatch(t *testing.T) {
+	t.Setenv("CODELOCAL_ADMIN_EMAILS", "someone@example.com")
+	t.Setenv("CODELOCAL_ADMIN_EMAIL", "")
+
+	if err := ensurePrivateOwnerAdmin("owner@example.com"); err == nil {
+		t.Fatal("expected explicit admin list without owner to fail closed")
 	}
 }
 

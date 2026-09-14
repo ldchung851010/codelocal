@@ -27,13 +27,13 @@ func (s *Store) EnsureBootstrapOwner(ctx context.Context, email, passwordHash, p
 
 	for attempt := 0; attempt < 10; attempt++ {
 		user := User{
-			ID:             RandomHex(16),
-			Email:          email,
-			PasswordHash:   passwordHash,
-			PasswordSalt:   passwordSalt,
+			ID:              RandomHex(16),
+			Email:           email,
+			PasswordHash:    passwordHash,
+			PasswordSalt:    passwordSalt,
 			SecurityVersion: 1,
-			ReferralCode:   RandomReferralCode(),
-			CreatedAt:      time.Now().UnixMilli(),
+			ReferralCode:    RandomReferralCode(),
+			CreatedAt:       time.Now().UnixMilli(),
 		}
 		_, err := s.DB.Exec(ctx, `INSERT INTO codelocal_users(id,email,password_hash,password_salt,referral_code,referred_by_code,created_at) VALUES($1,$2,$3,$4,$5,NULL,$6)`, user.ID, user.Email, user.PasswordHash, user.PasswordSalt, user.ReferralCode, user.CreatedAt)
 		if err == nil {

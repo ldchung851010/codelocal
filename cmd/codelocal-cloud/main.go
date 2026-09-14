@@ -34,6 +34,12 @@ func main() {
 		slog.Info("CodeLocal migration completed")
 		return
 	}
+	// Prepare private-mode admin configuration before constructing any server
+	// components so constructor-time admin checks see the intended owner.
+	if err := cloudserver.PreparePrivateModeEnvironment(); err != nil {
+		slog.Error("CodeLocal private mode configuration failed", "error", err)
+		os.Exit(1)
+	}
 	server, err := cloudserver.New(ctx)
 	if err != nil {
 		slog.Error("CodeLocal Cloud initialization failed", "error", err)
@@ -44,6 +50,13 @@ func main() {
 	// Keep old per-thread ChatGPT MCP schemas functional after the compact tool
 	// migration without re-exposing the legacy granular tools in tools/list.
 	server.HTTP.Handler = mcpgateway.LegacyToolCallCompatibility(server.HTTP.Handler)
+	if err := cloudserver.ConfigurePrivateMode(ctx, server); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		_ = server.Shutdown(shutdownCtx)
+		cancel()
+		slog.Error("CodeLocal private mode initialization failed", "error", err)
+		os.Exit(1)
+	}
 	errCh := make(chan error, 1)
 	go func() { errCh <- server.ListenAndServe() }()
 	select {

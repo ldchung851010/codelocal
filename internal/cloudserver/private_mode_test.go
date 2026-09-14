@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/0xmarkhydra/codelocal/internal/cloud"
 )
 
 func TestPrivateModeConfigDisabledByDefault(t *testing.T) {
@@ -89,6 +91,38 @@ func TestEnsurePrivateOwnerAdminRejectsExplicitMismatch(t *testing.T) {
 
 	if err := ensurePrivateOwnerAdmin("owner@example.com"); err == nil {
 		t.Fatal("expected explicit admin list without owner to fail closed")
+	}
+}
+
+func TestPreparePrivateModeEnvironmentSetsAdminBeforeServerConstruction(t *testing.T) {
+	t.Setenv("CODELOCAL_PRIVATE_MODE", "1")
+	t.Setenv("CODELOCAL_OWNER_EMAIL", "Owner@Example.com")
+	t.Setenv("CODELOCAL_OWNER_PASSWORD", "a-strong-private-password")
+	t.Setenv("CODELOCAL_ADMIN_EMAILS", "")
+	t.Setenv("CODELOCAL_ADMIN_EMAIL", "")
+
+	if err := PreparePrivateModeEnvironment(); err != nil {
+		t.Fatal(err)
+	}
+	admins := cloud.AdminEmails()
+	if len(admins) != 1 || admins[0] != "owner@example.com" {
+		t.Fatalf("AdminEmails()=%v, want [owner@example.com]", admins)
+	}
+}
+
+func TestPreparePrivateModeEnvironmentDoesNotChangeAdminWhenDisabled(t *testing.T) {
+	t.Setenv("CODELOCAL_PRIVATE_MODE", "0")
+	t.Setenv("CODELOCAL_OWNER_EMAIL", "")
+	t.Setenv("CODELOCAL_OWNER_PASSWORD", "")
+	t.Setenv("CODELOCAL_ADMIN_EMAILS", "existing@example.com")
+	t.Setenv("CODELOCAL_ADMIN_EMAIL", "")
+
+	if err := PreparePrivateModeEnvironment(); err != nil {
+		t.Fatal(err)
+	}
+	admins := cloud.AdminEmails()
+	if len(admins) != 1 || admins[0] != "existing@example.com" {
+		t.Fatalf("AdminEmails()=%v, want [existing@example.com]", admins)
 	}
 }
 

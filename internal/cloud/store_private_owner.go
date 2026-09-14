@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // EnsureBootstrapOwner creates the private deployment owner exactly once.
@@ -15,6 +17,9 @@ func (s *Store) EnsureBootstrapOwner(ctx context.Context, email, passwordHash, p
 	email = normalizeEmail(email)
 	if email == "" || strings.TrimSpace(passwordHash) == "" || strings.TrimSpace(passwordSalt) == "" {
 		return User{}, false, errors.New("BOOTSTRAP_OWNER_CREDENTIALS_REQUIRED")
+	}
+	if s == nil || s.DB == nil {
+		return User{}, false, errors.New("BOOTSTRAP_OWNER_STORE_UNAVAILABLE")
 	}
 
 	existing, err := s.UserByEmail(ctx, email)
@@ -39,7 +44,7 @@ func (s *Store) EnsureBootstrapOwner(ctx context.Context, email, passwordHash, p
 		if err == nil {
 			return user, true, nil
 		}
-		if strings.Contains(err.Error(), "23505") || strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+		if isUniqueViolation(err) {
 			existing, lookupErr := s.UserByEmail(ctx, email)
 			if lookupErr != nil {
 				return User{}, false, lookupErr
@@ -51,5 +56,10 @@ func (s *Store) EnsureBootstrapOwner(ctx context.Context, email, passwordHash, p
 		}
 		return User{}, false, err
 	}
-	return User{}, false, errors.New("REFERRAL_CODE_GENERATION_FAILED")
+	return User{}, false, errors.New("BOOTSTRAP_OWNER_UNIQUE_COLLISION")
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
